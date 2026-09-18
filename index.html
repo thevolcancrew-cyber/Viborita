@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego de la Víbora</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h2>Viborita 🐍</h2>
+
+    <!-- Menú -->
+    <div id="menu">
+        <p>Elige el modo de juego:</p>
+        <button class="menu-btn" onclick="startGame('classic')">Modo Clásico<br><small>(Meta: 100 puntos)</small></button>
+        <button class="menu-btn" onclick="startGame('infinite')">Modo Infinito<br><small>(Sin paredes)</small></button>
+    </div>
+
+    <!-- Juego -->
+    <div id="game-container" style="display: none;">
+        <div class="score-board">
+            Modo: <span id="modeName">Clásico</span> | Puntos: <span id="score">0</span>/<span id="targetScore">100</span>
+        </div>
+
+        <canvas id="snakeCanvas" width="512" height="512"></canvas>
+
+        <div class="controls">
+            <button id="upBtn">⬆️</button>
+            <div class="horizontal-controls">
+                <button id="leftBtn">⬅️</button>
+                <button id="rightBtn">➡️</button>
+            </div>
+            <button id="downBtn">⬇️</button>
+        </div>
+
+        <button class="back-btn" onclick="backToMenu()">Volver al Menú</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
