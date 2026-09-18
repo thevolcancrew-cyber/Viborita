@@ -1,124 +1,195 @@
-body {
-    background-color: #121212;
-    color: white;
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    margin: 0;
-    padding: 2px;
-    height: 100vh;
-    overflow: hidden;
-    touch-action: manipulation;
+const canvas = document.getElementById('snakeCanvas');
+const ctx = canvas.getContext('2d');
+const scoreDisplay = document.getElementById('score');
+const targetScoreDisplay = document.getElementById('targetScore');
+const modeNameDisplay = document.getElementById('modeName');
+const menu = document.getElementById('menu');
+const gameContainer = document.getElementById('game-container');
+
+// Tablero exacto de 64 x 64 casillas
+const totalCols = 64;
+const totalRows = 64;
+
+let snake = [];
+let foods = [];
+let dx = 1;
+let dy = 0;
+let score = 0;
+let gameInterval = null;
+let currentMode = 'classic';
+let foodMultiplier = 1;
+
+// Configurar los botones de movimiento al cargar el script
+document.getElementById('upBtn').addEventListener('click', () => { if (dy === 0) { dx = 0; dy = -1; } });
+document.getElementById('downBtn').addEventListener('click', () => { if (dy === 0) { dx = 0; dy = 1; } });
+document.getElementById('leftBtn').addEventListener('click', () => { if (dx === 0) { dx = -1; dy = 0; } });
+document.getElementById('rightBtn').addEventListener('click', () => { if (dx === 0) { dx = 1; dy = 0; } });
+
+function startGame(mode) {
+    currentMode = mode;
+    menu.style.display = 'none';
+    gameContainer.style.display = 'flex';
+    
+    if (mode === 'classic') {
+        modeNameDisplay.innerText = 'Clásico';
+        targetScoreDisplay.style.display = 'inline';
+        targetScoreDisplay.previousSibling.textContent = '/';
+    } else {
+        modeNameDisplay.innerText = 'Infinito';
+        targetScoreDisplay.style.display = 'none';
+        targetScoreDisplay.previousSibling.textContent = '';
+    }
+    
+    resetGame();
+    if (gameInterval) clearInterval(gameInterval);
+    gameInterval = setInterval(main, 100);
 }
 
-h2 {
-    margin: 3px 0;
-    font-size: 1rem;
+function backToMenu() {
+    if (gameInterval) clearInterval(gameInterval);
+    gameContainer.style.display = 'none';
+    menu.style.display = 'flex';
 }
 
-#menu {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    align-items: center;
-    justify-content: center;
-    background: #1a1a1a;
-    padding: 20px;
-    border-radius: 12px;
-    border: 2px solid #333;
-    margin-top: 20px;
-    width: 85%;
-    max-width: 300px;
+function main() {
+    if (hasGameEnded()) {
+        clearInterval(gameInterval);
+        alert('¡Juego terminado! Puntuación final: ' + score);
+        backToMenu();
+        return;
+    }
+
+    if (currentMode === 'classic' && score >= 100) {
+        clearInterval(gameInterval);
+        alert('🎉 ¡FELICIDADES! ¡Ganaste el Modo Clásico con 100 puntos!');
+        backToMenu();
+        return;
+    }
+
+    clearCanvas();
+    drawFood();
+    moveSnake();
+    drawSnake();
 }
 
-#menu p {
-    margin: 0 0 10px 0;
-    text-align: center;
-    font-size: 0.95rem;
+function clearCanvas() {
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-.menu-btn {
-    background-color: #00ffcc;
-    color: black;
-    border: none;
-    padding: 12px;
-    font-size: 0.95rem;
-    font-weight: bold;
-    border-radius: 8px;
-    cursor: pointer;
-    width: 100%;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+function drawSnake() {
+    const cellWidth = canvas.width / totalCols;
+    const cellHeight = canvas.height / totalRows;
+
+    snake.forEach((part, index) => {
+        ctx.fillStyle = index === 0 ? '#00ffcc' : '#00aa88';
+        let pWidth = cellWidth * 0.8;
+        let pHeight = cellHeight * 0.8;
+        let offsetX = (cellWidth - pWidth) / 2;
+        let offsetY = (cellHeight - pHeight) / 2;
+        ctx.fillRect((part.x * cellWidth) + offsetX, (part.y * cellHeight) + offsetY, pWidth, pHeight);
+    });
 }
 
-.menu-btn:active {
-    background-color: #00aa88;
+function moveSnake() {
+    const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+    if (currentMode === 'infinite') {
+        if (head.x < 0) head.x = totalCols - 1;
+        if (head.x >= totalCols) head.x = 0;
+        if (head.y < 0) head.y = totalRows - 1;
+        if (head.y >= totalRows) head.y = 0;
+    }
+
+    snake.unshift(head);
+
+    let eatenIndex = -1;
+    foods.forEach((food, index) => {
+        if (snake[0].x === food.x && snake[0].y === food.y) {
+            eatenIndex = index;
+        }
+    });
+
+    if (eatenIndex !== -1) {
+        score += 10;
+        scoreDisplay.innerText = score;
+        foods.splice(eatenIndex, 1);
+
+        if (foods.length === 0) {
+            foodMultiplier = foodMultiplier * 2;
+            if (foodMultiplier > 16) foodMultiplier = 16;
+            spawnMultipleFoods(foodMultiplier);
+        }
+    } else {
+        snake.pop();
+    }
 }
 
-#game-container {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
+function spawnMultipleFoods(count) {
+    foods = [];
+    const maxCellsTotal = totalCols * totalRows;
+    let availableSlots = maxCellsTotal - snake.length;
+    if (count > availableSlots) count = Math.max(1, availableSlots);
+
+    for (let i = 0; i < count; i++) {
+        let newFood;
+        let collision;
+        let safetyCounter = 0;
+        do {
+            collision = false;
+            newFood = {
+                x: Math.floor(Math.random() * totalCols),
+                y: Math.floor(Math.random() * totalRows)
+            };
+            snake.forEach(part => { if (part.x === newFood.x && part.y === newFood.y) collision = true; });
+            foods.forEach(f => { if (f.x === newFood.x && f.y === newFood.y) collision = true; });
+            
+            safetyCounter++;
+            if (safetyCounter > 100) break;
+        } while (collision);
+
+        foods.push(newFood);
+    }
 }
 
-.score-board {
-    font-size: 0.8rem;
-    margin: 2px 0;
-    color: #00ffcc;
-    text-align: center;
+function drawFood() {
+    const cellWidth = canvas.width / totalCols;
+    const cellHeight = canvas.height / totalRows;
+
+    ctx.fillStyle = '#ff3333';
+    foods.forEach(food => {
+        let fWidth = cellWidth * 0.75;
+        let fHeight = cellHeight * 0.75;
+        let offsetX = (cellWidth - fWidth) / 2;
+        let offsetY = (cellHeight - fHeight) / 2;
+        ctx.fillRect((food.x * cellWidth) + offsetX, (food.y * cellHeight) + offsetY, fWidth, fHeight);
+    });
 }
 
-canvas {
-    border: 2px solid #333;
-    background-color: #1a1a1a;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.6);
-    width: 330px;
-    height: 330px;
+function hasGameEnded() {
+    if (currentMode === 'classic') {
+        if (snake[0].x < 0 || snake[0].x >= totalCols || snake[0].y < 0 || snake[0].y >= totalRows) {
+            return true;
+        }
+    }
+
+    for (let i = 4; i < snake.length; i++) {
+        if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
+    }
+
+    return false;
 }
 
-.controls {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 4px;
-    gap: 2px;
-}
-
-.horizontal-controls {
-    display: flex;
-    gap: 55px;
-}
-
-.controls button {
-    background-color: #2a2a2a;
-    color: white;
-    border: 2px solid #444;
-    font-size: 1.1rem;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-}
-
-.controls button:active {
-    background-color: #00ffcc;
-    color: black;
-    border-color: #00ffcc;
-}
-
-.back-btn {
-    margin-top: 4px;
-    background-color: #ff4d4d;
-    color: white;
-    border: none;
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    border-radius: 5px;
-    font-weight: bold;
+function resetGame() {
+    snake = [
+        {x: 10, y: 10},
+        {x: 9, y: 10},
+        {x: 8, y: 10}
+    ];
+    dx = 1;
+    dy = 0;
+    score = 0;
+    foodMultiplier = 1;
+    scoreDisplay.innerText = score;
+    spawnMultipleFoods(1);
 }
