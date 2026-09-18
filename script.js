@@ -193,3 +193,8 @@ function resetGame() {
     scoreDisplay.innerText = score;
     spawnMultipleFoods(1);
 }
+
+// Registro del Service Worker para habilitar la instalación como app (PWA)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+}
