@@ -1,0 +1,21 @@
+{
+  "name": "Juego de la Viborita",
+  "short_name": "Viborita",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#00ffcc",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/528/528101.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },9
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/528/528101.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
